@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="lib" path="C:/Users/Sevren/workspace/TimGame/lib/junit-4.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Sevren/workspace/TimGame/lib/phys2d-060408.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Sevren/workspace/TimGame/lib/sample.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Sevren/workspace/TimGame/lib/TimRes.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

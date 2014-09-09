@@ -1,0 +1,52 @@
+8
+
+dir
+404
+https://svn.cis.uoguelph.ca/svn/Groups/CIS3750_GroupFour/tags/Final/src/test/game
+https://svn.cis.uoguelph.ca/svn/Groups/CIS3750_GroupFour
+
+
+
+2008-11-27T16:58:18.458162Z
+377
+kgoguev
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+5bf7aac8-0fd9-4c1c-9dd9-f065c0c7e476
+
+PlayerSettingTest.java
+file
+
+
+
+
+2008-12-08T17:36:15.000000Z
+70f051cd6d304002871b851c4d3af2de
+2008-11-27T16:58:18.458162Z
+377
+kgoguev
+
+PlayerProfileTest.java
+file
+
+
+
+
+2008-12-08T17:36:15.000000Z
+3bc2f36bad049736abacf4b8d6e2ca16
+2008-11-27T16:58:18.458162Z
+377
+kgoguev
+

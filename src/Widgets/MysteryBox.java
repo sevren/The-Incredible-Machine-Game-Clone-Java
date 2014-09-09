@@ -1,0 +1,525 @@
+//
+// MysteryBox.java
+//
+// Created for CIS3750 Assignment #2
+//
+// Copyright (c) 2008 Andrew Evans
+// evansa@uoguelph.ca
+// id 0176306 
+//
+package Widgets;
+
+import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
+import java.awt.image.BufferedImage;
+
+import javax.imageio.ImageIO;
+import java.io.IOException;
+import java.io.File;
+
+import javax.swing.ImageIcon;
+
+import net.phys2d.math.*;
+import net.phys2d.raw.*;
+import net.phys2d.raw.shapes.*;
+
+/**
+  A widget that creates a hollow box formed of very light walls fixed at right angles 
+  with a very heavy ball inside.  This widget will appear like any other box... until
+  it starts moving.
+
+  @author Andrew Evans
+  */
+public class MysteryBox implements Widget
+{
+    /* flags */
+    private boolean locked;
+    private boolean active;
+    private boolean reset;
+
+    /* icon */
+    private ImageIcon icon;
+
+    /* image */
+    private BufferedImage img;
+
+    /* walls */
+    private Body topWall;
+    private Body rightWall;
+    private Body leftWall;
+    private Body bottomWall;
+
+    /* ball */
+    private Body ball;
+
+    /* corner joints */
+    private FixedJoint topLeftJoint;
+    private FixedJoint topRightJoint;
+    private FixedJoint bottomLeftJoint;
+    private FixedJoint bottomRightJoint;
+
+    /* basic dimension stuff */
+    private final float width = 40.0f;
+    private final float height = 40.0f;
+    private final float wallThickness = 2.0f;
+    private final float ballSize = 5.0f;
+    
+    private final float wallMass = 10.0f;
+    private final float ballMass = 100.0f;
+
+    /**
+     * Basic constructor
+     */
+    public MysteryBox()
+    {
+        /* Notes:
+           -all positions initialized to put its center at (0,0)
+           -ball starts right in the middle
+           -two side walls are shorter than top and bottom by the thickness of the wall
+           so that overall dimensions remain width x height but no walls overlap since
+           overlapping causes crazy constant collisions that phys2d doesn't like (or so it seems)
+           */
+        
+        /* create the walls */
+        topWall = new Body("MysteryBox_TopWall",       new Box(width,         wallThickness),              wallMass);
+        rightWall = new Body("MysteryBox_RightWall",   new Box(wallThickness, height - 2 * wallThickness), wallMass);
+        leftWall = new Body("MysteryBox_LeftWall",     new Box(wallThickness, height - 2 * wallThickness), wallMass);
+        bottomWall = new Body("MysteryBox_BottomWall", new Box(width,         wallThickness),              wallMass);
+
+        /* add collision exclusions */
+        topWall.addExcludedBody(rightWall);
+        topWall.addExcludedBody(leftWall);
+
+        bottomWall.addExcludedBody(rightWall);
+        bottomWall.addExcludedBody(leftWall);
+
+        leftWall.addExcludedBody(topWall);
+        leftWall.addExcludedBody(bottomWall);
+
+        rightWall.addExcludedBody(topWall);
+        rightWall.addExcludedBody(bottomWall);
+
+        /* create the ball */
+        ball = new Body("InnerCircle", new Circle(ballSize), ballMass);
+        
+        /* reset body positions to starting state */
+        resetBodies();
+
+        /* set up joints fixing each wall to its 2 neighbours 
+           in theory the fourth joint shouldn't really matter */
+        topLeftJoint = new FixedJoint(topWall, leftWall);
+        topRightJoint = new FixedJoint(topWall, rightWall);
+        bottomRightJoint = new FixedJoint(bottomWall, rightWall);
+        bottomLeftJoint = new FixedJoint(bottomWall, leftWall);
+
+        /* set flags */
+        locked = false;
+        active = false;
+        reset = false;
+
+        /* grab icon */
+        icon = new ImageIcon(getClass().getClassLoader().getResource("resources/images/MysteryBox.gif"),"MysteryBox");
+
+        /* read in image for draw method */
+        try
+        {
+            img = ImageIO.read(getClass().getClassLoader().getResource("resources/images/MysteryBox.gif"));
+        }
+        catch(IOException e)
+        {
+            /* failed to read file */
+            System.err.println("Error loading resources/images/MysteryBox.gif for MysteryBox widget.");
+            img = null;
+        }
+    }
+
+    /**
+      * Reset bodies to starting orientation + position.
+      */
+    private void resetBodies()
+    {
+        ball.setRotation(0);
+        topWall.setRotation(0);
+        rightWall.setRotation(0);
+        leftWall.setRotation(0);
+        bottomWall.setRotation(0);
+
+        topWall.setPosition(     0, -1 * (height - wallThickness)/2 );
+        bottomWall.setPosition(  0,      (height - wallThickness)/2 );
+
+        rightWall.setPosition(      (width - wallThickness)/2,   0);
+        leftWall.setPosition(  -1 * (width - wallThickness)/2,  0);
+
+        ball.setPosition(0,0);
+    }
+
+	/**
+     * @see Widgets.Widget#setPosition
+	 */
+	public void setPosition(Vector2f f)
+    {
+        /* Strategy:
+           -get notion of current "center"
+           -get notion of future "center"
+           -adjust all bodies by the delta
+           */
+
+        /* 
+        float curX = (topWall.getPosition().getX() + bottomWall.getPosition().getX())/2;
+        float curY = (topWall.getPosition().getY() + bottomWall.getPosition().getY())/2;
+
+        float newX = f.getX() + width/2;
+        float newY = f.getY() + height/2;
+
+        float dx = newX - curX;
+        float dy = newY - curY;
+
+        Vector2f delta = new Vector2f(dx,dy);
+
+        ball.adjustPosition(delta);
+
+        topWall.adjustPosition(delta);
+        rightWall.adjustPosition(delta);
+        leftWall.adjustPosition(delta);
+        bottomWall.adjustPosition(delta);
+        */
+
+        Vector2f delta = new Vector2f(f.getX() + width/2, f.getY() + height/2);
+
+        resetBodies();
+        ball.adjustPosition(delta);
+        topWall.adjustPosition(delta);
+        rightWall.adjustPosition(delta);
+        leftWall.adjustPosition(delta);
+        bottomWall.adjustPosition(delta);
+
+        /* this doesn't work for some reason:
+        for(Body b : bodies)
+        {
+            b.adjustPosition(delta);
+        }
+        */
+    }
+
+	/**
+     * @see Widgets.Widget#setPositionX
+	 */
+	public void setPositionX(float x)
+    {
+        /* TODO: could be more efficient */
+        this.setPosition(new Vector2f(x, getPositionY()));
+    }
+
+	/**
+     * @see Widgets.Widget#setPositionY
+	 */
+	public void setPositionY(float y)
+    {
+        /* TODO: could be more efficient */
+        this.setPosition(new Vector2f(getPositionX(), y));
+    }
+
+	/**
+     * @see Widgets.Widget#getPosition
+	 */
+	public Vector2f getPosition()
+    {
+        return new Vector2f(this.getPositionX(),this.getPositionY());
+    }
+
+	/**
+     * @see Widgets.Widget#getPositionX
+	 */
+	public float getPositionX()
+    {
+        return (topWall.getPosition().getX() + bottomWall.getPosition().getX())/2 - width/2;
+    }
+
+	/**
+     * @see Widgets.Widget#getPositionY
+	 */
+	public float getPositionY()
+    {
+        return (topWall.getPosition().getY() + bottomWall.getPosition().getY())/2 - height/2;
+    }
+
+
+    private void drawBoxBody(Body b, Graphics2D g)
+    {
+        /* Method for getting translated points of box adapted from drawLineBody in:
+           http://www.cokeandcode.com/phys2d/source/builds/src060408.zip
+           test/net/phys2d/raw/test/AbstractDemo.java
+           Line 328
+           Author: Kevin Glass
+           */
+        Vector2f[] points = ((Box)b.getShape()).getPoints(b.getPosition(),b.getRotation());
+        
+        for(int i = 0; i <= 3; i++)
+        {
+        	g.drawLine(
+        			(int)points[i].getX(),
+        			(int)points[i].getY(),
+        			(int)points[(i+1)%4].getX(),
+        			(int)points[(i+1)%4].getY());
+        }
+
+    }
+
+    private void drawCircleBody(Body b, Graphics2D g)
+    {
+        /* draw ball */
+        int radius = (int)((Circle)b.getShape()).getRadius();
+        int x = (int) b.getPosition().getX() - radius;
+        int y = (int) b.getPosition().getY() - radius;
+        g.drawOval(
+        		x,
+        		y,
+        		radius * 2,
+        		radius * 2);
+    }
+
+	/**
+     * @see Widgets.Widget#draw
+	 */
+	public void draw (Graphics2D g)
+    {
+        if (img != null)
+        {
+            /* we read in image properly in constructor, use it */
+            
+            /* draw properly rotated image */
+            g.drawImage(
+                    img,
+                    new AffineTransformOp(
+                        AffineTransform.getRotateInstance(
+                            topWall.getRotation(), 
+                            width/2,
+                            height/2),
+                        AffineTransformOp.TYPE_BILINEAR),
+                    (int)this.getPosition().getX(),
+                    (int)this.getPosition().getY());
+        }
+        else
+        {
+            /* fall back on line drawing method */
+            drawBoxBody(leftWall, g);
+            drawBoxBody(rightWall, g);
+            drawBoxBody(topWall, g);
+            drawBoxBody(bottomWall, g);
+    
+            drawCircleBody(ball, g);
+        }
+    }
+
+	/**
+     * @see Widgets.Widget#activateWidget
+	 */
+	public void activateWidget ()
+    {
+        if (reset == false)
+        {
+            /* refuse activation */
+            return;
+        }
+        else
+        {
+            active = true;
+        }
+    }
+
+	/**
+     * @see Widgets.Widget#resetWidget
+	 */
+	public void resetWidget()
+    {
+        active = false;
+        reset = true;
+        /* TODO reset position + direction to remembered state */
+    }
+
+	/**
+     * @see Widgets.Widget#rotateClockwise
+	 */
+	public void rotateClockwise()
+    {
+        /* no concept of initial direction for a square box */
+        return;
+    }
+
+	/**
+     * @see Widgets.Widget#rotateCounterClockwise
+	 */
+    public void rotateCounterClockwise ()
+    {
+        /* no concept of initial direction for a square box */
+        return;
+    }
+
+	/**
+     * @see Widgets.Widget#setDirection
+	 */
+	public void setDirection(Direction d)
+    {
+        /* no concept of direction for a square box */
+        return;
+    }
+
+	/**
+     * @see Widgets.Widget#getDirection
+	 */
+	public Direction getDirection ()
+    {
+        return Widget.Direction.NORTH;
+    }
+
+	/**
+     * @see Widgets.Widget#isActive
+	 */
+	public boolean isActive()
+    {
+        return active;
+    }
+
+	/**
+     * @see Widgets.Widget#getName
+	 */
+	public String getName()
+    {
+        return new String("MysteryBox");
+    }
+
+	/**
+     * @see Widgets.Widget#getType
+	 */
+	public ActionType getType()
+    {
+        return Widget.ActionType.BOUNCE;
+    }
+
+	/**
+     * @see Widgets.Widget#reactToTouchingBody
+	 */
+	public void reactToTouchingBody(CollisionEvent e)
+    {
+        /* no special action needs to be taken by this widget in collisions */
+        return;
+    }
+
+	/**
+     * @see Widgets.Widget#isConnectable
+	 */
+	public boolean isConnectable()
+    {
+        /* not connectable */
+        return false;
+    }
+
+	/**
+     * @see Widgets.Widget#setConnectionPoints
+	 */
+	public void setConnectionPoints(Vector2f[] points)
+    {
+        /* not connectable */
+        return;
+    }
+
+	/**
+     * @see Widgets.Widget#isLocked
+	 */
+	public boolean isLocked()
+    {
+        return locked;
+    }
+
+	/**
+     * @see Widgets.Widget#setLock
+	 */
+	public void setLock(boolean locked)
+    {
+        this.locked = locked;
+    }
+
+	/**
+     * @see Widgets.Widget#attachJoint
+	 */
+	public Vector2f attachJoint (Vector2f point)
+    {
+        /* no connection points available */
+        return null;
+    }
+
+	/**
+     * @see Widgets.Widget#getBodiesForSimulation
+	 */
+	public Body[] getBodiesForSimulation ()
+    {   
+        Body[] bodies = new Body[5];
+        
+        bodies[0] = ball;
+        bodies[1] = leftWall;
+        bodies[2] = rightWall;
+        bodies[3] = bottomWall;
+        bodies[4] = topWall;
+
+        return bodies;
+    }
+
+	/**
+     * @see Widgets.Widget#getJointsForSimulation
+	 */
+	public Joint[] getJointsForSimulation ()
+    {
+        Joint[] joints = new Joint[4];
+
+        joints[0] = topLeftJoint;
+        joints[1] = topRightJoint;
+        joints[2] = bottomLeftJoint;
+        joints[3] = bottomRightJoint;
+
+        return joints;
+    }
+
+	/**
+     * @see Widgets.Widget#receiveImpulse
+	 */
+	public void receiveImpulse(Vector2f anchor_point)
+    {
+        /* have no joints, nothing to activate */
+        return;
+    }
+
+	/**
+     * @see Widgets.Widget#getBoundary
+	 */
+	public Vector2f[] getBoundary()
+    {
+        /* assumption is boundary doesn't rotate with the widget and doesn't change size */
+        Vector2f[] corners = new Vector2f[4];
+        corners[0] = new Vector2f(this.getPositionX(), this.getPositionY());
+        corners[1] = new Vector2f(this.getPositionX() + width, this.getPositionY());
+        corners[2] = new Vector2f(this.getPositionX() + width, this.getPositionY() + height);
+        corners[3] = new Vector2f(this.getPositionX(), this.getPositionY() + height);
+            
+        return corners;
+    }
+
+	/**
+     * @see Widgets.Widget#getDescription
+	 */
+	public String getDescription ()
+    {
+        return new String("This is a box. At first glance it may appear to be an ordinary box. " +
+                "However once it starts moving you'll soon see it has a mind of its own and " +
+                "can be highly unpredictable.  Use at your own risk.");
+    }
+
+	/**
+     * @see Widgets.Widget#getIcon
+	 */
+	public ImageIcon getIcon()
+    {
+        return icon;
+    }
+}
+

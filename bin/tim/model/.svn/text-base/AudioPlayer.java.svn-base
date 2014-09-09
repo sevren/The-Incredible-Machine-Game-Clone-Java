@@ -1,0 +1,100 @@
+//	AudioPlayer.java
+//
+//
+//	Created by Group Four on 15/11/08
+//	Copyright 2008 Group Four. All rights reserved.
+//
+package tim.model;
+
+import java.io.*;
+import javax.sound.sampled.*;
+import javax.swing.*;
+
+/*
+The song used by this game is from
+http://willhostforfood.com/?Action=download&fileid=40950
+drizztdourden66 is the author
+
+
+the good sound used by this game is from
+http://www.freesound.org/samplesViewSingle.php?id=49194
+tombola is the author of this sound
+
+the bad sound used by this game is from
+http://www.freesound.org/samplesViewSingle.php?id=49204
+tombola is the author of this sound
+*/
+
+/**
+ * This AudioPlayer class is made for the purpose of integrating sound
+ * into the timGame
+ *
+ */
+public class AudioPlayer
+{
+	Clip music;
+	Clip good;
+	Clip bad;
+
+	/**
+	 * This no constructor tries to load in the song and the sounds in order for it
+	 * to be played if need be.
+	 */
+	public AudioPlayer()
+	{
+		try
+		{
+			music = AudioSystem.getClip();
+			music.open(AudioSystem.getAudioInputStream(new File("resources/sounds/music.wav")));
+			good = AudioSystem.getClip();
+			good.open(AudioSystem.getAudioInputStream(new File("resources/sounds/good.wav")));
+			bad = AudioSystem.getClip();
+			bad.open(AudioSystem.getAudioInputStream(new File("resources/sounds/bad.wav")));
+		}
+		catch (Exception ex) 
+		{
+			System.out.println(ex.getMessage());
+		}
+	}
+
+	/**
+	 * Plays the music which continuously repeats until it is stopped
+	 */
+	public void playMusic()
+	{
+		if (!music.isRunning())
+		{
+			music.loop(Clip.LOOP_CONTINUOUSLY);
+			music.start();
+		}
+	}
+
+	/**
+	 * Stops the music that is playing.
+	 */
+	public void stopMusic()
+	{
+		if (music.isRunning())
+		{
+			music.stop();
+		}
+	}
+
+	/**
+	 * Plays the good sound for releasing a widget (valid position)
+	 */
+	public void playGoodSound()
+	{
+		good.setFramePosition(0);
+		good.start();
+	}
+
+	/**
+	 * Plays the bad sound for releasing a widget (invalid position)
+	 */
+	public void playBadSound()
+	{
+		bad.setFramePosition(0);
+		bad.start();
+	}
+}

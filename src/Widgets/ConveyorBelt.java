@@ -1,0 +1,669 @@
+package Widgets;
+
+import java.awt.*;
+import Widgets.*;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import net.phys2d.math.ROVector2f;
+import net.phys2d.math.Vector2f;
+import net.phys2d.raw.*;
+import net.phys2d.raw.shapes.*;
+
+/**
+ * A widget that simulates a simplistic conveyor belt. Objects over a 
+ * certain weight (100 units) will be given a bit of a boost to the left
+ * or right direction, respective of the belt facing.
+ * @author Nathaniel Ridder 
+ */
+public class ConveyorBelt implements Widget {
+
+    private static final ActionType type = ActionType.IMPACT;
+    private static final String widget_name = "ConveyorBelt";
+    private static final String widget_desc = "If an object is heavy enough, it will" +
+            "activate this conveyor belt, sending it moving towards the left or right, " +
+            "depending on the direction of the belt.";
+    private static final ImageIcon widget_icon = new ImageIcon(ConveyorBelt.class.getClassLoader().getResource("resources/img/belt_icon.PNG"));
+
+    //private static final File image_beltlength = new File("src/Widgets/img/right_arrow.PNG");
+    private static BufferedImage img;
+    private Direction current_direction;
+    private boolean active;
+    private boolean locked;
+	private boolean use_image;
+    private boolean have_reset;
+    private Body[] belt_bodies;
+    private Joint[] joints;
+    //The top left corner of the boundary
+    private Vector2f topleft_corner;
+    private Vector2f botright_corner;
+
+    /**
+     * Constructor. Creates the bodies and joints and sets their relevant 
+     * properties up. Also instantiates the two boundary points used.
+     * The 'belt' will absorb 60% of a striking object's energy, while the 
+     * spinning balls will take only 80%. The facing of the conveyor belt is
+     * by default Direction.WEST.
+     */
+    public ConveyorBelt() {
+        belt_bodies = new Body[4];
+        joints = new Joint[4];
+
+		//Reading in our useful image, keeping it in the buffer for further purposes.
+		try
+		{
+			img = ImageIO.read(ConveyorBelt.class.getClassLoader().getResource("resources/img/right_arrow.PNG"));
+			use_image = true;
+		}
+		catch (Exception e)
+		{
+			use_image = false;
+		}	
+        //Create the bodies used by the widget.
+        Body spinner = new Body(new Circle(10), 10);
+        spinner.setGravityEffected(false);
+        spinner.setMaxVelocity(0, 0);
+        spinner.setRestitution(0.8f);
+		spinner.setRotDamping(0.5f);
+        belt_bodies[0] = spinner;
+
+        Body spinner2 = new Body(new Circle(10), 10);
+        spinner2.setGravityEffected(false);
+        spinner2.setMaxVelocity(0, 0);
+        spinner2.setRestitution(0.8f);
+		spinner2.setRotDamping(0.5f);
+        belt_bodies[1] = spinner2;
+
+        Body top_surface = new StaticBody(new Box(100, 1));
+        top_surface.setRestitution(0.6f);
+        belt_bodies[2] = top_surface;
+
+        Body bot_surface = new StaticBody(new Box(100, 1));
+        bot_surface.setRestitution(0.6f);
+        belt_bodies[3] = bot_surface;
+
+        //Create the joints that hold the widget together.
+        Joint top_to_spinner1 = new FixedJoint(spinner, top_surface);
+        joints[0] = top_to_spinner1;
+
+        Joint top_to_spinner2 = new FixedJoint(spinner2, top_surface);
+        joints[1] = top_to_spinner2;
+
+        Joint bot_to_spinner1 = new FixedJoint(spinner, bot_surface);
+        joints[2] = bot_to_spinner1;
+
+        Joint bot_to_spinner2 = new FixedJoint(spinner2, bot_surface);
+        joints[3] = bot_to_spinner2;
+
+        //Set the default direction.
+        current_direction = Direction.WEST;
+
+        topleft_corner = new Vector2f();
+        botright_corner = new Vector2f();
+
+        this.setPositionX(topleft_corner.getX());
+        this.setPositionY(topleft_corner.getY() + 1);
+
+        //Since instantiation does not start the widget, we make the state inactive.
+        active = false;
+        have_reset = false;
+    }
+
+    /**
+     * Sets the position of the aggregrate bodies making up the belt, using the 
+     * parameter as the guiding point. Also repositions the boundary points.
+     * @param f The top-left corner of the the rectangular area that is the space
+     * taken up by the conveyor belt. *NOT* the boundary area.
+     */
+    public void setPosition(Vector2f f) {
+        float cornerX, cornerY;
+
+        cornerX = f.getX();
+        cornerY = f.getY();
+        //adding 10 from parameter's X-coord, so as to fit the center of the first circle
+        // within the corner.
+        belt_bodies[0].setPosition(cornerX + 10, cornerY + 12);
+        belt_bodies[1].setPosition(cornerX + 10 + 100, cornerY + 12);
+
+        //Position for Boxes take it from the center, hence the addition of 50.
+        if (current_direction == Direction.WEST) {
+            belt_bodies[2].setPosition(cornerX + 10 + 50, cornerY);
+            belt_bodies[3].setPosition(cornerX + 10 + 50, cornerY + 12 + 12);
+        } else {
+            belt_bodies[3].setPosition(cornerX + 10 + 50, cornerY);
+            belt_bodies[2].setPosition(cornerX + 10 + 50, cornerY + 12 + 12);
+        }
+
+        topleft_corner = new Vector2f(f.getX(), f.getY() - 1);
+        botright_corner = new Vector2f(belt_bodies[1].getPosition().getX() + 10, belt_bodies[1].getPosition().getY() + 15);
+    }
+
+    /**
+     * Sets the X position of the aggregate bodies that make up the belt, using
+     * the parameter as the guiding point. Also repositions the boundary points.
+     * @param x The X-coordinate that is to be the top-left corner of the space
+     * taken up by the conveyor belt. *NOT* the boundary area.
+     */
+    public void setPositionX(float x) {
+        float cornerX, currentY;
+        cornerX = x;
+
+        currentY = belt_bodies[0].getPosition().getY();
+        belt_bodies[0].setPosition(cornerX + 10, currentY);
+
+        currentY = belt_bodies[1].getPosition().getY();
+        belt_bodies[1].setPosition(cornerX + 10 + 100, currentY);
+
+        currentY = belt_bodies[2].getPosition().getY();
+        belt_bodies[2].setPosition(cornerX + 10 + 50, currentY);
+
+        currentY = belt_bodies[3].getPosition().getY();
+        belt_bodies[3].setPosition(cornerX + 10 + 50, currentY);
+
+        topleft_corner.set(x, topleft_corner.getY());
+        botright_corner.set(belt_bodies[1].getPosition().getX() + 10, botright_corner.getY());
+    }
+
+    /**
+     * Sets the Y position of the aggregate bodies that make up the belt, using
+     * the parameter as the guiding point. Also repositions the boundary points.
+     * @param y The Y-coordinate that is to be the top-left corner of the space
+     * taken up by the conveyor belt. *NOT* the boundary area.
+     */
+    public void setPositionY(float y) {
+        float currentX, cornerY;
+        cornerY = y + 1;
+
+        currentX = belt_bodies[0].getPosition().getX();
+        belt_bodies[0].setPosition(currentX, cornerY + 12);
+
+        currentX = belt_bodies[1].getPosition().getX();
+        belt_bodies[1].setPosition(currentX, cornerY + 12);
+
+        currentX = belt_bodies[2].getPosition().getX();
+        if (current_direction == Direction.WEST) {
+            belt_bodies[2].setPosition(currentX, cornerY);
+        } else {
+            belt_bodies[2].setPosition(currentX, cornerY + 12 + 12);
+        }
+        currentX = belt_bodies[2].getPosition().getX();
+        if (current_direction == Direction.EAST) {
+            belt_bodies[3].setPosition(currentX, cornerY + 12 + 12);
+        } else {
+            belt_bodies[3].setPosition(currentX, cornerY);
+        }
+        topleft_corner.set(topleft_corner.getX(), y);
+        botright_corner.set(botright_corner.getX(), belt_bodies[1].getPosition().getY() + 15);
+    }
+
+    /**
+     * Retrieves the position of the top-left corner of the area taken up by the 
+     * aggregate bodies that make up the conveyor belt.
+     * @return The position, top-left corner of the conveyor belt space.
+     */
+    public Vector2f getPosition() {
+        float cornerX, cornerY;
+        cornerX = belt_bodies[0].getPosition().getX() - 10;
+        cornerY = belt_bodies[0].getPosition().getY() - 12;
+
+        return new Vector2f(cornerX, cornerY);
+    }
+
+    /**
+     * Retrieves the X-coordinate of the top-left corner of the area taken up
+     * by the conveyor belt.
+     * @return The horizontal position, top-left corner of the conveyor belt space.
+     */
+    public float getPositionX() {
+        float cornerX;
+        cornerX = belt_bodies[0].getPosition().getX() - 10;
+
+        return cornerX;
+    }
+
+    /**
+     * Retrieves the Y-coordinate of the top-left corner of the area taken up
+     * by the conveyor belt.
+     * @return The vertical position, top-left corner of the conveyor belt space.
+     */
+    public float getPositionY() {
+        float cornerY;
+        cornerY = belt_bodies[0].getPosition().getY() - 12;
+
+        return cornerY;
+    }
+
+    /**
+     * An attempt to draw the conveyor belt, using primitive lines, circles
+     * and hopefully an image or two. Used for playing field display.
+     * The circles have lines in them to show how they are rotating, to make it
+     * clear which direction it is facing. Also, the direction of the force
+     * applied to weighty objects is shown going from the red circle to the green
+     * circle.
+     * @param g The object to draw things on-screen.
+     */
+    public void draw(Graphics2D g) {
+        Color original_color;
+        ROVector2f position;
+        float radius, rotation, rotx, roty;
+		float x, y;
+        
+        BufferedImage display_image;
+
+        original_color = g.getColor();
+        //draw circle 1
+        if (current_direction == Direction.WEST) {
+            g.setColor(Color.red);
+        } else {
+            g.setColor(Color.green);
+        }
+        position = belt_bodies[0].getPosition();
+		x = position.getX();
+		y = position.getY();
+		
+        radius = ((Circle) belt_bodies[0].getShape()).getRadius();
+        rotation = belt_bodies[0].getRotation();
+        rotx = (float) (Math.cos(rotation) * radius);
+        roty = (float) (Math.sin(rotation) * radius);
+
+        g.drawOval((int) (x - radius), (int) (y - radius), (int) (radius * 2),
+                (int) (radius * 2));
+
+        g.setColor(Color.black);
+        g.drawLine((int) x, (int) y, (int) (x + rotx),
+                (int) (y + roty));
+
+        //draw circle 2
+        if (current_direction == Direction.EAST) {
+            g.setColor(Color.red);
+        } else {
+            g.setColor(Color.green);
+        }
+        position = belt_bodies[1].getPosition();
+		x = position.getX();
+		y = position.getY();
+		
+        radius = ((Circle) belt_bodies[1].getShape()).getRadius();
+        rotation = belt_bodies[0].getRotation();
+        rotx = (float) (Math.cos(rotation) * radius);
+        roty = (float) (Math.sin(rotation) * radius);
+
+        g.drawOval((int) (x - radius), (int) (y - radius), (int) (radius * 2),
+                (int) (radius * 2));
+
+        g.setColor(Color.black);
+        g.drawLine((int) x, (int) y, (int) (x + rotx),
+                (int) (y + roty));
+
+        //draw box 1
+        if (use_image)
+        {
+            position = belt_bodies[2].getPosition();
+            AffineTransform matrix = AffineTransform.getTranslateInstance(position.getX()-50, position.getY());
+            matrix.scale(0.5,0.25);
+            g.drawRenderedImage(img, matrix);
+			
+            position = belt_bodies[3].getPosition();
+            matrix = AffineTransform.getTranslateInstance(position.getX()+50, position.getY());
+            matrix.rotate(Math.PI);
+            matrix.scale(0.5,0.25);
+            g.drawRenderedImage(img, matrix);
+        }
+        else
+        {
+            position = belt_bodies[2].getPosition();
+			x = position.getX();
+			y = position.getY();
+            g.drawLine((int)(x - 50), (int)(y), (int)(x+50), (int)(y));
+            position = belt_bodies[3].getPosition();
+            g.drawLine((int)(x - 50), (int)(y), (int)(x+50), (int)(y));
+        }
+     
+        g.setColor(original_color);
+    }
+
+    /**
+     * Starts whatever the widget is supposed to do, as the physics engine does
+     * its thing. In the case of the conveyor belt, starts the two circles rotating
+     * in the right direction. NOTE: Will not do anything unless resetWidget has
+     * been called at least once, as per Widget interface instructions.
+     */
+    public void activateWidget() {
+        if (have_reset) {
+            if (current_direction == Direction.WEST) {
+                belt_bodies[0].setTorque(100000);
+                belt_bodies[1].setTorque(100000);
+            } else {
+                belt_bodies[0].setTorque(-100000);
+                belt_bodies[1].setTorque(-100000);
+            }
+			active = true;
+        }
+    }
+
+    /**
+     * Resets the widget to its base state, once placed or after a simulation
+     * has been run. Since the conveyor belt does not have any parts that shift
+     * away from their starting positions, this does nothing. Well, aside from
+     * allowing activateWidget() to be used.
+     */
+    public void resetWidget() {
+        have_reset = true;
+		active = false;
+		if (belt_bodies[0].getTorque() != 0)
+			belt_bodies[0].setTorque(belt_bodies[0].getTorque()*(-1));
+		if (belt_bodies[1].getTorque() != 0)
+			belt_bodies[1].setTorque(belt_bodies[1].getTorque()*(-1));
+    }
+
+    /**
+     * Rotates the conveyor belt clockwise. Or it would, if it were the type
+     * to be needing rotation. The decision was to not have it rotate, as it would
+     * require a large boundary to keep it from overlapping with other widgets.
+     * Might be convinced to make a vertical conveyor belt at some point.
+     */
+    public void rotateClockwise() {
+        //I DO NOTHING. Conveyor belts do not rotate.
+    }
+
+    /**
+     * (NOT) rotate the conveyor belt counter clockwise. Yep, this does nothing.
+     * See rotateClockwise for reasoning.
+     */
+    public void rotateCounterClockwise() {
+        //I DO NOTHING. Conveyor belts do not rotate.
+    }
+
+    /**
+     * Sets the direction to one of four different facings (NORTH, EAST, WEST, SOUTH).
+     * However, only EAST, WEST will do anything here, as it determines the direction
+     * that objects touching the belt will go.
+     * @param d The direction, in one of four compass points. Use Direction.EAST or WEST.
+     * Default at time of instantiation is Direction.WEST.
+     */
+    public void setDirection(Direction d) {
+        if (d != current_direction) {
+            if (d == Direction.EAST) {
+                current_direction = d;
+                //Currently WEST, means [2] of belt bodies is top
+                ROVector2f current_top = belt_bodies[2].getPosition();
+                ROVector2f current_bot = belt_bodies[3].getPosition();
+                belt_bodies[2].setPosition(current_bot.getX(), current_bot.getY());
+                belt_bodies[3].setPosition(current_top.getX(), current_top.getY());
+            } else if (d == Direction.WEST) {
+                current_direction = d;
+                //Currently EAST, means [3] of belt bodies is top
+                ROVector2f current_top = belt_bodies[3].getPosition();
+                ROVector2f current_bot = belt_bodies[2].getPosition();
+                belt_bodies[2].setPosition(current_top.getX(), current_top.getY());
+                belt_bodies[3].setPosition(current_bot.getX(), current_bot.getY());
+            }
+        }
+    }
+
+    /**
+     * Retrieves the direction that the conveyor belt is facing.
+     * @return The direction, in enum form. Possible values are Direction.EAST or
+     * Direction.WEST.
+     */
+    public Direction getDirection() {
+        return current_direction;
+    }
+
+    /**
+     * Retrieves the active flag, to see if the conveyor belt is active or not.
+     * Probably not going to be used in most designs, as widgets will not be active
+     * unless they are being used in the simulation. Once the simulation is reset,
+     * the program will likely just iterate through the list of widgets and use
+     * the resetWidget() method on each.
+     * @return True if the conveyor belt is active (running), false otherwise.
+     */
+    public boolean isActive() {
+        return active;
+    }
+
+    /**
+     * Retrieves the name of the widget. Value stored is Static, so it will not 
+     * change between instantiations.
+     * @return The name "Weight Activated Conveyor Belt".
+     */
+    public String getName() {
+        return widget_name;
+    }
+
+    /**
+     * Retrieves the type of the widget. Value stored is static, so it will not
+     * change between instantiations.
+     * @return The Actiontype "Impact", since it is activated on a collision with 
+     * another object.
+     */
+    public ActionType getType() {
+        return type;
+    }
+
+    /**
+     * Checks both bodies passed in from the CollisionEvent object to see if 
+     * they are part of the conveyor belt. First, though, it makes sure that 
+     * the other object is heavy enough to have a force applied to it. If the body
+     * is touching one of the 'belts', it will have a force applied to it going
+     * in the direction that the belt is facing. 
+     * 
+     * For example, if a body touches the top belt of a conveyor belt facing WEST,
+     * the force applied to that body will be in the same direction. If a body touches
+     * the bottom belt, however, the force will be applied east.
+     * @param e
+     */
+    public void reactToTouchingBody(CollisionEvent e) {
+    /*
+        if (e.getBodyB().getMass() >= 100) {
+            //Body touching [0] depends on current_direction and where contact happens
+            if (e.getBodyA().equals(belt_bodies[0])) {
+            } //Body touching [1] depends on current_direction and where contact happens
+            else if (e.getBodyA().equals(belt_bodies[1])) {
+            } //Body touching [2] goes left
+            else if (e.getBodyA().equals(belt_bodies[2])) {
+                e.getBodyB().addForce(new Vector2f(100000, 0));
+            } //Body touching [3] goes right
+            else if (e.getBodyA().equals(belt_bodies[3])) {
+                e.getBodyB().addForce(new Vector2f(-100000, 0));
+            }
+            //Make the circles spin a little faster once activated.
+            if (current_direction == Direction.WEST) {
+                belt_bodies[0].setTorque(200000);
+                belt_bodies[1].setTorque(200000);
+            } else {
+                belt_bodies[0].setTorque(-200000);
+                belt_bodies[1].setTorque(-200000);
+            }
+        } else if (e.getBodyA().getMass() >= 100) {
+            //Body touching [0] depends on current_direction and where contact happens
+            if (e.getBodyB().equals(belt_bodies[0])) {
+            } //Body touching [1] depends on current_direction and where contact happens
+            else if (e.getBodyB().equals(belt_bodies[1])) {
+            } //Body touching [2] goes left
+            else if (e.getBodyB().equals(belt_bodies[2])) {
+                e.getBodyA().addForce(new Vector2f(100000, 0));
+            } //Body touching [3] goes right
+            else if (e.getBodyB().equals(belt_bodies[3])) {
+                e.getBodyA().addForce(new Vector2f(-100000, 0));
+            }
+            //Make the circles spin a little faster once activated.
+            if (current_direction == Direction.WEST) {
+                belt_bodies[0].setTorque(200000);
+                belt_bodies[1].setTorque(200000);
+            } else {
+                belt_bodies[0].setTorque(-200000);
+                belt_bodies[1].setTorque(-200000);
+            }
+        }*/
+        System.out.println("belt action!");
+        Body other = null;
+        float force = 10000f;
+        /* get other body if collision with top_surface */
+        if (e.getBodyA() == belt_bodies[2])
+        	other = e.getBodyB();
+        else if (e.getBodyB() == belt_bodies[2])
+        	other = e.getBodyA();
+        
+        /* get other body and reverse force if collision with bottom_surface */
+        else if (e.getBodyA() == belt_bodies[3])
+        {
+        	other = e.getBodyB();
+        	force = force*-1;
+        }
+        else if (e.getBodyB() == belt_bodies[3])
+        {
+        	other = e.getBodyA();
+        	force = force*-1;
+        }
+        
+        System.out.println("other body: "+ other);
+        /* apply the force */
+        if (other != null)
+        	other.addForce( new Vector2f(force * other.getMass()/2,0f) );
+        
+    }
+
+    /**
+     * Determines if the conveyor belt has any connecting points. This is a
+     * self-powered widget, so it does not need a cord to a generator of some sort.
+     * It also is stable and will not move due to gravity, so it does not need a 
+     * place for a rope to be attached.
+     * @return Whether or not the conveyor belt has connecting points. 
+     * Will always return false.
+     */
+    public boolean isConnectable() {
+        return false;
+    }
+
+    /**
+     * Uh, sets the connection points of the conveyor belt. Since there are no
+     * points needed for this (see isConnectable()), this method does nothing.
+     * However, this should be handled during instantiation, so I am not sure
+     * why we have this method in the first place.
+     * @param points The coordinates to have a Joint connect to for the conveyor belt.
+     * 
+     */
+    public void setConnectionPoints(Vector2f[] points) {
+        //I DO NOTHING. I COULD, IF THIS NEEDED POWER.
+        //Maybe for a distant cousin...
+    }
+
+    /**
+     * Determines if the conveyor belt is locked (not able to be moved by the
+     * player, part of the puzzle) or not.
+     * @return The status of the lock on the conveyor belt.
+     */
+    public boolean isLocked() {
+        return locked;
+    }
+
+    /**
+     * Sets the lock state of the conveyor belt. Locked means the belt cannot
+     * be moved in the puzzle area by the player.
+     * @param locked False if the conveyor belt is movable by the player, true
+     * otherwise.
+     */
+    public void setLock(boolean locked) {
+        this.locked = locked;
+    }
+
+    /**
+     * NOT USED BY THIS WIDGET
+     * The parameter is the coordinate to which a Joint endpoint is currently 
+     * trying to be attached to. The method should check for closest Body that
+     * is a connection point and return the coordinates of it. Except that
+     * Joints do not, in reality, attach to exact coordinates, but rather to 
+     * two Body objects. The return value will have to be changed to a connectable
+     * Body.
+     * Also, once something is connected, prolly want to make note that the point
+     * is now no longer available for use.
+     * 
+     * Now, this is for cases in which we are using the Phys2D Joints to simulate
+     * rope or electric cords. If groups are using something else, then this is
+     * perfectly valid.
+     * @param point The coordinates in which a Joint endpoint is trying to connect
+     * to the Widget.
+     * @return The coordinates of the nearest connection point.
+     */
+    public Vector2f attachJoint(
+            Vector2f point) {
+        return null;
+    }
+
+    /**
+     * Retrieves an array of Body objects for use within the physics simulation.
+     * For the conveyor belt, this should be two Circles and two Boxes.
+     * @return An array of Body objects, hopefully making up the conveyor belt.
+     */
+    public Body[] getBodiesForSimulation() {
+        return belt_bodies;
+    }
+    
+    /**
+     * Retrieves the array of internal Joint objects that are used by the 
+     * conveyor belt. There should be four FixedJoints, going from each Box to 
+     * each Circle.
+     * @return An array of Joint objects, hopefully making up the conveyor belt.
+     */
+    public Joint[] getJointsForSimulation() {
+        return joints;
+    }
+
+    /**
+     * NOT USED BY THIS WIDGET
+     * Have the widget do something when what it has been connected to via a 
+     * connection point has been activated (by touch or by starting the simulation).
+     * 
+     * I can see power cords being easily workable in this manner, but getting the 
+     * impulse from a taut rope pulling on the widget will require some more 
+     * thought.
+     * @param anchor_point The connection point of the widget. Hopefully the widget
+     * has been keeping track of in use connection points, so this can work.
+     */
+    public void receiveImpulse(Vector2f anchor_point) {
+        //I DO NOTHING, 'CAUSE I DO NOT CONNECT TO ANYTHING
+        //Maybe for a more complex machine. Right now, self-contained
+        // widgets are in vogue.
+    }
+
+    /**
+     * Retrieves the corners of the conveyor belt's boundary that limits overlap
+     * with other widgets.
+     * @return An array of four Vector2f of the corner coordinates of the boundary.
+     * [0] is top left,     [1] is top right
+     * [2] is bottom right, [3] is bottom left
+     */
+    public Vector2f[] getBoundary() {
+        Vector2f[] boundary_corners = new Vector2f[4];
+        boundary_corners[0] = topleft_corner;
+        boundary_corners[1] = new Vector2f(botright_corner.getX(), topleft_corner.getY());
+        boundary_corners[2] = new Vector2f(botright_corner.getX(), botright_corner.getY());
+        boundary_corners[3] = new Vector2f(topleft_corner.getX(), botright_corner.getY());
+
+        return boundary_corners;
+    }
+
+    /**
+     * Retrieves the description of the conveyor belt. This is static and will not
+     * change between instantiations.
+     * @return The description "If an object is heavy enough, it will activate 
+     * this conveyor belt, sending it moving towards the left or right, 
+     * depending on the direction of the belt."
+     */
+    public String getDescription() {
+        return widget_desc;
+    }
+
+    /**
+     * Retrieves the smaller representation of the conveyor belt. Mostly for
+     * use in a toolbox.
+     * @return The image loaded from ./img/belt_icon.png.
+     */
+    public ImageIcon getIcon() {
+        return widget_icon;
+    }
+}
+

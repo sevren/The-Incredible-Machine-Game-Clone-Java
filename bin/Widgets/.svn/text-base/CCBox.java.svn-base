@@ -1,0 +1,462 @@
+/* Jason Cote
+ *
+ * Class: CCBox
+ */
+package Widgets;
+
+import java.awt.*;
+import java.awt.geom.*;
+import javax.swing.ImageIcon;
+import java.awt.image.AffineTransformOp;
+
+import net.phys2d.raw.*;
+import net.phys2d.raw.shapes.Box;
+import net.phys2d.math.*;
+import net.phys2d.raw.*;
+
+/** CCBox is a simple widget class that consists of a single Box body.
+ *  Upon collision the colour of the Box will change, however the widget
+ *  must be in an active state in order to do so.  This can be achieved
+ *  by calling activateWidget().
+ *
+ *  The Phys2D javadocs by Kevin Glass were used frequently to ensure
+ *  this widget is designed to be compatible with the Phys2D engine.
+ *  Other citations can be found in the description for draw() and 
+ *  getBoundary().
+ */
+public class CCBox implements Widget
+{
+	
+	private String       widget_name;
+	private String       widget_desc;
+	private ActionType   widget_type;
+	private boolean      widget_lock;
+	private boolean      widget_active;
+	private Direction    widget_dir;
+	private float        height = 28.0f;
+	private float        width = 28.0f;
+	
+	private int          partA_colour;
+	
+	/* Bodies and joints that form this widget */
+	private Body         partA;
+	
+	/* Position variables for the bodies */
+	private float topleft_x = 0;
+	private float topleft_y = 0;
+	private Vector2f partA_pos;
+	
+	/** Create a new instance of CCBox with a name "new_CCBox"
+	 */
+	public CCBox()
+	{
+		this("new_CCBox");
+	}
+	
+	/** Create a new instance of CCBox providing it with a name.
+	 */
+	public CCBox(String name)
+	{
+		this.widget_name = name;
+		this.widget_desc = "A box widget that changes colour on impact.";
+		this.widget_type = ActionType.IMPACT;
+		this.widget_active = false;
+		this.widget_lock = false;
+		this.widget_dir = Direction.WEST;
+		
+		this.partA_colour = 0;
+		partA = new Body( "partA", new Box(width, height), 15f );
+		partA_pos = new Vector2f();
+	}
+
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Set the position of the widget.
+	 * @param f  The x,y coordinates within the
+	 * container.
+	 */
+	public void setPosition(Vector2f f)
+	{
+		/* set the Widget's top-left point */
+	 	topleft_x = f.getX();
+	 	topleft_y = f.getY();
+	 	
+	 	float x,y;
+	 	x = topleft_x + width / 2;
+	 	y = topleft_y + height / 2;
+	 	
+	 	/* set the center position for drawing the partA body */
+	 	partA_pos.set( x, y );
+	 	partA.setPosition( x, y );
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Set the x-coordinate of the widget.
+	 * @param x  The x coordinate within the container.
+	 */
+	public void setPositionX(float x)
+	{	 	
+	 	topleft_x = x;
+	 	
+	 	float partA_x = x + width / 2;
+	 	
+	 	partA.setPosition( partA_x, this.getPositionY() );
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Set the y-coordinate of the widget.
+	 * @param y  The y coordinate within the container.
+	 */
+	public void setPositionY(float y)
+	{
+		topleft_y = y;
+		
+		float partA_y = y + height / 2;
+	 	
+	 	partA.setPosition( this.getPositionX(), partA_y );
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Get the position of the widget.
+	 * @return   The x,y coordinates within the container.
+	 */
+	public Vector2f getPosition() {
+		ROVector2f pos = partA.getPosition();
+		return new Vector2f( pos.getX()-width/2 , pos.getY()-height/2 );
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Get the x-coordinate of the widget.
+	 * @return   The x coordinate within the container.
+	 */
+	public float getPositionX()
+	{
+		return this.getPosition().getX();
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Get the x-coordinate of the widget.
+	 * @return   The x coordinate within the container.
+	 */
+	public float getPositionY()
+	{
+		return this.getPosition().getY();
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+      * Draws the widget.
+      * A tutorial by Marty Hall (http://www.apl.jhu.edu/~hall/java/Java2D-Tutorial.html)
+      * was used to help me understand Java 2D graphics
+      * and using the Graphics2D class to draw/fill shapes.
+	 * @param graphics  The Graphics2D object that draws things.
+	 */
+	public void draw(Graphics2D graphics)
+	{
+		Color old = graphics.getColor();
+		
+		if (this.partA_colour == 0) graphics.setColor(Color.orange);
+		else if (this.partA_colour == 1) graphics.setColor(Color.blue);
+		else if (this.partA_colour == 2) graphics.setColor(Color.green);
+		
+		Vector2f[] points = ((Box)partA.getShape()).getPoints(partA.getPosition(),partA.getRotation());
+		
+		int xs[] = { 0, 0, 0, 0 };
+		int ys[] = { 0, 0, 0, 0 };
+		for( int i=0; i<4; i++ )
+		{
+			xs[i] = (int) points[i].getX();
+			ys[i] = (int) points[i].getY();
+		}
+
+		graphics.fill( new Polygon(xs, ys, 4) );
+						
+		graphics.setColor(old);
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Activates the widget.
+	 */
+	public void activateWidget()
+	{
+		this.widget_active = true;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Resets the widget to start state.
+	 */
+	public void resetWidget()
+	{
+		this.widget_active = false;
+		this.widget_dir = Direction.WEST;
+		this.setPosition( new Vector2f(topleft_x, topleft_y) );
+		partA.setRotation(0f);
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Rotates the Widget 90 Degrees in a
+	 * clockwise direction.
+	 */
+	public void rotateClockwise()
+	{
+		if (this.widget_dir == Direction.WEST) this.widget_dir = Direction.NORTH;
+		else if (this.widget_dir == Direction.NORTH) this.widget_dir = Direction.EAST;
+		else if (this.widget_dir == Direction.EAST) this.widget_dir = Direction.SOUTH;
+		else if (this.widget_dir == Direction.SOUTH) this.widget_dir = Direction.WEST;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Rotates the Widget 90 Degrees in a
+	 * counter-clockwise direction.
+	 */
+	public void rotateCounterClockwise()
+	{
+		if (this.widget_dir == Direction.WEST) this.widget_dir = Direction.SOUTH;
+		else if (this.widget_dir == Direction.SOUTH) this.widget_dir = Direction.EAST;
+		else if (this.widget_dir == Direction.EAST) this.widget_dir = Direction.NORTH;
+		else if (this.widget_dir == Direction.NORTH) this.widget_dir = Direction.WEST;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Manually set the direction of which
+	 * the Widget is facing.
+	 *
+	 * @param d Direction to rotate the Widget
+	 */
+	public void setDirection(Direction d)
+	{
+		this.widget_dir = d;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Gets the direction in which the Widget is currently facing
+	 * @return The direction that the widget is facing.
+	 */
+	public Direction getDirection()
+	{
+		return this.widget_dir;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Determines if the widget is active.
+	 * @return true is widget is active, false if not.
+	 */
+	public boolean isActive()
+	{
+		return this.widget_active;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Sets the name of the widget.
+	 * @param name The name being assigned to the widget.
+	 */
+	public void setName(String name)
+	{
+		this.widget_name = name;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Gets the name of the widget.
+	 * @return The name of the widget.
+	 */
+	public String getName()
+	{
+		return this.widget_name;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Gets the type of the widget.
+	 * @return The ActionType that the widget is categorized as.
+	 */
+	public ActionType getType()
+	{
+		return this.widget_type;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * When this method is called, the widget will cycle through
+	 * to the next colour that it changes to.  The cycle is orange,
+	 * blue, green, and then starting over. 
+	 * @param e The collision event that was triggered by a collision.
+	 */
+	public void reactToTouchingBody(CollisionEvent e)
+	{
+		if (e.getBodyA() == partA || e.getBodyB() == partA)
+			this.partA_colour = (this.partA_colour+1)%3;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * If this widget can connect to joints or not.
+	 * This is always false for this widget.
+	 */
+	public boolean isConnectable()
+	{
+		return false;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Sets the points where joints will connect to this widget.
+	 * @param points The points within the widget that designate
+	 * where joints connect to.
+	 * Should not be called for this widget as it is not connectable.
+	 */
+	public void setConnectionPoints(Vector2f[] points)
+	{
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Whether or not the widget is locked and cannot be moved.
+	 * @return If the widget is locked (true) or not (false).
+	 */
+	public boolean isLocked()
+	{
+		return this.widget_lock;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Sets the lock state of the widget.
+	 * @param locked If the widget is to be locked (true) or 
+	 * not (false).
+	 */
+	public void setLock(boolean locked)
+	{
+		this.widget_lock = locked;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * The point that a joint is attempting to connect to the 
+	 * widget. What is returned is the closest connection point.
+	 * @param point The x,y coordinates where the joint is attempting to
+	 * connected to.
+	 * @return null - This widget is not connectable.
+	 */
+	public Vector2f attachJoint(Vector2f point)
+	{
+		return null;
+	}
+	/* ------------------------------------------------- */
+	
+
+	/**
+	 * Returns an array of the Bodies this widget has, for use in Phys2D engine.
+	 * @return An array of bodies.
+	 */
+	public Body[] getBodiesForSimulation()
+	{
+		Body[] bodies = new Body[1];
+		bodies[0] = partA;
+		return bodies;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Returns an array of the Joints this widget has, for use in Phys2D engine.
+	 * @return An empty array of joints, as this widget uses no Joints.
+	 */
+	public Joint[] getJointsForSimulation()
+	{
+		Joint[] joints = new Joint[0];
+		return joints;
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * This method does nothing for this widget, since it is not connectable.
+	 * @param anchor_point The x,y coordinates of the connected Joint.
+	 */
+	public void receiveImpulse(Vector2f anchor_point)
+	{
+	}
+	/* ------------------------------------------------- */
+	
+	
+	/**
+	 * Gets the four boundary vertices of the widget,
+	 * which chould be used as a way to detect overlapping widgets.
+	 *
+	 * Since this widget is only one body, I used the Box.getPoints() method
+	 * to obtain the 4 points for the one body.  Using this method was an
+	 * inspiration from AbstractDemo.java by Kevin Glass, the Phys2D author.
+	 * @return The four corners x,y coordinates.
+	 */
+	public Vector2f[] getBoundary()
+	{
+		Vector2f[] corners = new Vector2f[4];
+		corners[0] = new Vector2f(this.getPositionX(), this.getPositionY());
+		corners[1] = new Vector2f(this.getPositionX() + width, this.getPositionY());
+		corners[2] = new Vector2f(this.getPositionX() + width, this.getPositionY() + height);
+		corners[3] = new Vector2f(this.getPositionX(), this.getPositionY() + height);
+		
+		return corners;
+	}
+	/* ------------------------------------------------- */
+	 
+	 
+	 /**
+	  * Retrieves the description of the widget.
+	  * @return String that is the widget description.
+	  */
+	 public String getDescription()
+	 {
+	 	return this.widget_desc;
+	 }
+	 /* ------------------------------------------------- */
+	 
+	 
+	 /**
+	 * Retrieves the image associated with the widget.
+	 * @return An empty ImageIcon, since this widget is drawn with Graphics2D
+	 */
+	public ImageIcon getIcon()
+	{
+		return new ImageIcon("src/Widgets/img/CCBox.gif");
+	}
+	/* ------------------------------------------------- */
+}

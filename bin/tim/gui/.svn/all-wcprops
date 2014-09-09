@@ -1,0 +1,77 @@
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui
+END
+Drawable.java
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/Drawable.java
+END
+SingleInputDialog.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/SingleInputDialog.java
+END
+TimLevelSelect.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/TimLevelSelect.java
+END
+GameCanvas.java
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/GameCanvas.java
+END
+LevelSummaryDialog.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/LevelSummaryDialog.java
+END
+TimSetting.java
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/TimSetting.java
+END
+WidgetScroller.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/WidgetScroller.java
+END
+ScoreDialog.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/ScoreDialog.java
+END
+ScorePanel.java
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/ScorePanel.java
+END
+TimGUI.java
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/TimGUI.java
+END
+TimMenuPanel.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/TimMenuPanel.java
+END
+TimMenuScreen.java
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/svn/Groups/CIS3750_GroupFour/!svn/ver/404/tags/Final/src/tim/gui/TimMenuScreen.java
+END

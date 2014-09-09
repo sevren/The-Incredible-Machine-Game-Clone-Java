@@ -1,0 +1,131 @@
+//
+//	TimMenuScreen.java
+//
+//
+//	Created by Group Four on 16/10/08
+//	Copyright 2008 Group Four. All rights reserved.
+//
+package tim.gui;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+
+import tim.game.*;
+
+/**
+ * Score and time penalty panel, also holds Go and Stop buttons 
+ * for use with the view
+ **/
+public class ScorePanel extends JPanel implements ActionListener {
+    private final static String STARTBUTTON = "Start";
+    private final static String STOPBUTTON = "Stop";
+    private final static String PLAYERLABEL = "Player Score: ";
+    private final static String TIMELABEL = "Time Penalty: ";
+    
+    private JButton startButton;
+	private String action;
+    private JLabel playerScore, time;
+    private TimGUI timGUIRef;
+    private Icon goIcon;
+    private Icon stopIcon;
+    private int timeTrack = 0;
+	/**
+	 * Create a new score panel object
+	 * @param parent The container to 'display' this from.
+	 */
+	public ScorePanel(Object parent) {
+		super ();
+        timGUIRef = (TimGUI)parent;
+        JPanel scorePanel = new JPanel(new BorderLayout());
+        JPanel timePanel = new JPanel(new BorderLayout());
+        goIcon = new ImageIcon(getClass().getClassLoader().getResource("resources/images/Go.gif"));
+        stopIcon = new ImageIcon(getClass().getClassLoader().getResource("resources/images/Stop.gif"));
+        this.setPreferredSize(new Dimension(220,80));
+        this.setMaximumSize(new Dimension(220,80));
+        this.setBorder( BorderFactory.createEtchedBorder() );
+        this.setLayout(new BorderLayout());
+        startButton = new JButton(goIcon);
+        startButton.addActionListener(this);
+        startButton.setActionCommand(STARTBUTTON);
+        startButton.setMaximumSize(new Dimension(90,12));
+        
+        time = new JLabel(""+timeTrack);
+        playerScore = new JLabel(""+0);
+        
+        scorePanel.add(new JLabel(PLAYERLABEL),BorderLayout.NORTH);
+        scorePanel.add(playerScore,BorderLayout.WEST);
+        timePanel.add(new JLabel(TIMELABEL),BorderLayout.NORTH);
+        timePanel.add(time,BorderLayout.WEST);
+
+        this.add(scorePanel, BorderLayout.NORTH);
+        this.add(timePanel, BorderLayout.WEST);
+        this.add(startButton,BorderLayout.CENTER);
+        
+    }
+	
+    /**
+     * Handles events from the stop or go button and responds
+     * according to what came up.
+     * @param e event from button
+     **/
+	public void actionPerformed(ActionEvent e) {
+        //System.out.println(e.getActionCommand());
+		if (e.getActionCommand().equals(STARTBUTTON)) {
+			timGUIRef.fireTimGUIEvent(new TimGUIEvent(this, TimGUIEvent.START), TimGUIEvent.TIMGAME);
+            startButton.setActionCommand(STOPBUTTON);
+            startButton.setIcon(stopIcon);
+        }else {
+            timGUIRef.fireTimGUIEvent(new TimGUIEvent(this, TimGUIEvent.STOP), TimGUIEvent.TIMGAME);
+            startButton.setActionCommand(STARTBUTTON);
+            startButton.setIcon(goIcon);
+            timeTrack += 10;
+            time.setText(""+timeTrack);}
+	}
+    
+    /**
+     * Sets the Stop icon on the start button
+     */
+    public void setStopIcon() {
+        startButton.setIcon(stopIcon);
+        startButton.setActionCommand(STOPBUTTON);
+    }
+    
+    /**
+     * Sets the Go icon on the start button
+     */
+    public void setGoIcon() {
+        startButton.setIcon(goIcon);
+        startButton.setActionCommand(STARTBUTTON);
+    }
+	
+    /**
+     * Retrieves the time penalty the player has incurred (How many times the player hits stop 
+     * to restart the simulation +10 penalty)
+     * 
+     * @return the current time penalty
+     **/
+    public int getTimePenalty() {
+            return timeTrack;
+    }
+
+    /**
+     * Sets the time penalty, used for resetting
+     * @param num the number to set the time penalty to
+     **/
+    public void setTimePenalty(int num) {
+        timeTrack = num;
+        time.setText(""+timeTrack);
+    }
+    
+    /**
+     * Sets the player score label to display the users
+     * current score on the panel
+     * @param score the players current score from their profile
+     */
+    public void setPlayerScore(int score) {
+        playerScore.setText(""+score);
+    }
+
+    
+}

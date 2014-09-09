@@ -1,0 +1,409 @@
+/** TVwidget.java
+* @author Kiril Goguev
+* TV widget, breaks when it hits anything. Very Fragile
+* Citations: The Phys2D Physics Engine is an Engine Written by Kevin Glass(KevGlass) and can be found here : http://www.cokeandcode.com/phys2d/ 
+* The Various methods used from the Phys2d Engine can be found here in detail: http://www.cokeandcode.com/phys2d/source/javadoc/ written by Kevin Glass(KevGlass) 
+* The Widget class is a abstract class created for 3750 F08 by TeamLeads NOTE: some of the comments/javadoc commands come from the orignal widget these were left for javadoc completness while others were changed to suit this widget specifically.
+**/
+
+package Widgets;
+
+import Widgets.*;
+import net.phys2d.raw.*;
+import net.phys2d.raw.shapes.*;
+import net.phys2d.math.*;
+import javax.swing.JFrame;
+import java.awt.*;
+import java.awt.image.*;
+import javax.swing.ImageIcon;
+import net.phys2d.raw.collide.*;
+import javax.imageio.ImageIO;
+import java.io.*;
+
+public class TVwidget implements Widget {
+	
+	private Body[] tvBox;
+	private Boolean resetOnce,WidgetActivated,widgetLocked,widgetBroken;
+	private String Name;
+	private Direction widgetDirection;
+	private ActionType widgetAction;
+	private Vector2f Location;
+	private BufferedImage img, img2;
+	private float height = 37f;
+	private float width = 40f;
+	
+	
+	/** constructs the tvBody and initalizes all states and loads all images from the src folder
+	*
+	**/
+	public TVwidget()
+	{
+		int i=0;
+		tvBox = new Body[1];
+		tvBox[0]=new StaticBody("TV",new Box(width,height));
+		Location = new Vector2f(0f,0f);
+		try
+		{
+			img=ImageIO.read(getClass().getClassLoader().getResource("resources/img/TV1.gif"));
+			img2=ImageIO.read(getClass().getClassLoader().getResource("resources/img/TV2.gif"));
+		}
+		catch(Exception E)
+		{
+			System.out.println("Error loading image files");
+			img = null;
+			img2 = null;
+		}
+		
+		resetOnce =false;
+		WidgetActivated=false;
+		Name="TV";
+		widgetDirection=Direction.NORTH;
+		widgetAction=ActionType.EXPLOSION;
+		widgetLocked=false;
+		widgetBroken=false;
+	}
+	
+	/**
+	 * Set the position of the widget.
+	 * @param f  The x,y coordinates within the
+	 * container.
+	 */
+	public	void setPosition(Vector2f f)
+	{
+		Location = f;
+		tvBox[0].setPosition( Location.getX()+width/2, Location.getY()+height/2 );
+	}
+	
+	/**
+	 * Set the top-left x-coordinate of the widget.
+	 * Should be equivalent to setPosition(x, getPositionY());
+	 * @param x  The x coordinate within the container.
+	 */
+	public	void setPositionX(float x)
+	{
+		setPosition(new Vector2f(x,getPositionY()));
+	}
+	
+	/**
+	 * Set the top-left y-coordinate of the widget.
+	 * Should be equivalent to setPosition(getPositionX(), y);
+	 * @param y  The y coordinate within the container.
+	 */
+	public	void setPositionY(float y)
+	{
+		setPosition(new Vector2f(getPositionX(),y));
+	}
+	
+	/**
+	 * Get the top-left position of the widget.
+	 * @return   The x,y coordinates within the container.
+	 */
+	public	Vector2f getPosition()
+	{
+		return Location;
+	}
+	
+	/**
+	 * Get the top-left x-coordinate of the widget.
+	 * Should be equivalent to getPosition().getX();
+	 * @return   The x coordinate within the container.
+	 */
+	public	float getPositionX()
+	{
+		return Location.getX();
+	}
+	
+	/**
+	 * Get the top-left y-coordinate of the widget.
+	 * Should be equivalent to getPosition().getY();
+	 * @return   The y coordinate within the container.
+	 */
+	public	float getPositionY()
+	{
+		return Location.getY();
+	}
+	
+	/**
+	 * Draws the TV Widget. uses BufferedImage with image files loaded from the src folder 
+	 * @param g  The graphic object
+	 */
+	public	void draw (Graphics2D g)
+	{
+		if (!widgetBroken && img != null)
+		{
+			g.drawImage(img, null, (int)this.getPositionX(),(int)this.getPositionY());		
+		}
+		else if (img2 != null)
+		{
+			g.drawImage(img2, null, (int)this.getPositionX(),(int)this.getPositionY());
+		}
+		
+		
+	}
+	
+	/**
+	 * Activates the widget.
+	 * Must refuse activation before resetWidget is called at least once.
+	 * Must be called by the engine for every widget when the gameplay start.
+	 * TV widget is generally always Active when the resetWidget is called
+	 */
+	public	void activateWidget ()
+	{
+		if (this.resetOnce==true)
+		{
+			WidgetActivated=true;
+			return;
+		}
+		
+		
+	}
+	
+	/**
+	 * Resets and reinitalizes the TV widget.
+	 * 
+	 * 
+	 *
+	 * 
+	 * 
+	 */
+	public	void resetWidget()
+	{
+	
+		this.setPosition(Location);
+		resetOnce =false;
+		WidgetActivated=false;
+		Name="TV";
+		widgetDirection=Direction.NORTH;
+		widgetAction=ActionType.EXPLOSION;
+		widgetLocked=false;
+		widgetBroken=false;
+
+	}
+	
+	/**
+	 * TV widget does not use this method
+	 */
+	public	void rotateClockwise()
+	{
+		
+	}
+	
+	/**
+	 * TV widget does not use this method
+	 */
+	public	void rotateCounterClockwise ()
+	{
+		
+	}
+	
+	/**
+	 * Manually set the direction of which
+	 * the Widget is facing.
+	 *
+	 * Note: For widgets that may only be flipped horizontally or vertically
+	 * (or don't have a notion of "direction") the widget can ignore the request.
+	 * This means that no change to direction should occur in the case of
+	 * an invalid direction for the widget.
+	 *
+	 * Basically, depending on the widget, setDirection may not do anything when
+	 * supplied a direction.
+	 *
+	 * TV widget does not use this method
+	 * @param d Direction to rotate the Widget
+	 */
+	public	void setDirection(Direction d)
+	{
+		
+	}
+	
+	/**
+	 * Gets the direction in which the Widget is currently facing
+	 * @return The direction that the widget is facing. Should not be null!
+	 *		So, pick an arbitrary direction for directionless widgets on construction.
+	 */
+	public	Direction getDirection ()
+	{
+		return widgetDirection;
+	}
+	
+	/**
+	 * TV widget is always Active
+	 * @return whether or not the widget is active.
+	 */
+	public	boolean isActive()
+	{
+		return true;
+	}
+	
+	/**
+	 * Gets the name of the widget.
+	 * @return The name of the widget.
+	 */
+	public	String getName ()
+	{
+		return Name;
+	}
+	
+	/**
+	 * Gets the type of the widget. This should be part of ActionType.
+	 * @return The ActionType that the widget is categorized as.
+	 */
+	public	ActionType getType()
+	{
+		return widgetAction;
+	}
+	
+	/**
+	 *Sets a boolean state for the TV widget widgetBroken if it its anything 
+	 * @param e The collision event that was triggered by a collision.
+	 */
+	public	void reactToTouchingBody(CollisionEvent e)
+	{
+		widgetBroken=true;
+				
+	}
+	
+	/**
+	 * TV widget cant connect to any joints
+	 * This method will always return false
+	 */
+	public	boolean isConnectable()
+	{
+		return false;
+	}
+	
+	/**
+	 * TV Widget does not use this method
+	 * 
+	 * @param points The points within the widget that designate
+	 * where joints connect to.
+	 */
+	public	void setConnectionPoints(Vector2f[] points)
+	{
+	}
+	
+	/**
+	 * Whether or not the widget is locked and cannot be moved.
+	 * Lock state should not be a fixed value, so setLock does something
+	 * @return If the widget is locked (true) or not (false).
+	 */
+	public	boolean isLocked()
+	{
+		if (widgetLocked)
+		{
+			return true;
+		}
+		else 
+		{
+			return false;
+		}
+	}
+	
+	/**
+	 * Sets the lock state of the widget.
+	 * Lock state returned by isLocked should reflect the change.
+	 * @param locked If the widget is to be locked (true) or
+	 * not (false).
+	 */
+	public	void setLock(boolean locked)
+	{
+		widgetLocked = locked;
+	}
+	
+	/**
+	 * TV Widget does not use this method
+	 * 
+	 * 
+	 * @param point The x,y coordinates where the joint is attempting to
+	 * connected to.
+	 * @return null always
+	 * 		
+	 */
+	public	Vector2f attachJoint (Vector2f point)
+	{
+		return null;
+	}
+	
+	/**
+	 * Returns an array of the Bodies this widget has, for use in Phys2D engine.
+	 * The Body instances returned should stay the same across calls.
+	 * This means create all Body objects you need when calling the constructor.
+	 * @return An array of bodies.
+	 */
+	public	Body[] getBodiesForSimulation ()
+	{
+		return tvBox;
+	}
+	
+	/**
+	 * TV widget does not use joints
+	 * 
+	 * @return null always
+	 */
+	public	Joint[] getJointsForSimulation ()
+	{
+		return null;
+	}
+	
+	/**
+	 * TV widget does not use this method
+	 * @param anchor_point The x,y coordinates of the connected Joint.
+	 */
+	public	void receiveImpulse(Vector2f anchor_point)
+	{
+	}
+	
+	/**
+	 * Gets the four boundary vertices of the widget,
+	 * which chould be used as a way to detect overlapping widgets.
+	 * The corner array must be in the following (clockwise) order:
+	 *      corner[0]: top-left corner
+	 *      corner[1]: top-right corner
+	 *      corner[2]: bottom-right corner
+	 *	    corner[3]: bottom-left corner
+	 *
+	 *	To get width of the rectangular bound you go: corner[2].getX() - corner[0].getX()
+	 *	To get height of the rectangular bound you go: corner[2].getY() - corner[0].getY()
+	 * @return The four corners x,y coordinates.
+	 */
+	public	Vector2f[] getBoundary()
+	{
+		/*
+		Vector2f[] bounds = new Vector2f[4];
+		bounds[0]=getPositionX();
+		bounds[1]=getPositionY();
+		bounds[2]=(int)this.getPositionX()+20;
+		bounds[3]=(int)this.getPositionY()+20;
+		return bounds;
+		*/
+		
+		Vector2f[] corners = new Vector2f[4];
+		corners[0] = new Vector2f(this.getPositionX(), this.getPositionY());
+		corners[1] = new Vector2f(this.getPositionX() + width, this.getPositionY());
+		corners[2] = new Vector2f(this.getPositionX() + width, this.getPositionY() + height);
+		corners[3] = new Vector2f(this.getPositionX(), this.getPositionY() + height);
+		return corners;
+	}
+	
+	/**
+	 * Retrieves the description of the TV widget
+	 * @return The description of the TV widget
+	 */
+	public	String getDescription ()
+	{
+		return "This widget is a TV it's very fragile and will break when it hits anything";
+	}
+	
+	/**
+	 * Retrieves the images associated with the widget.
+	 * The image should not exceed 100x100.
+	 * The image linked to the to class is a tv0.jpg found in the src folder
+	 * @return The image which is linked with the widget.
+	 */
+	public	ImageIcon getIcon ()
+	{
+		return new ImageIcon(getClass().getClassLoader().getResource("resources/img/TV1.gif"));
+	}
+	
+	
+}
